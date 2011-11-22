@@ -5,7 +5,7 @@
 ;; Author: Sebastien Gross <seb•ɑƬ•chezwam•ɖɵʈ•org>
 ;; Keywords: emacs, dired
 ;; Created: 2011-07-06
-;; Last changed: 2011-07-06 15:45:59
+;; Last changed: 2011-11-22 19:10:49
 ;; Licence: WTFPL, grab your copy here: http://sam.zoy.org/wtfpl/
 
 ;; This file is NOT part of GNU Emacs.
@@ -76,32 +76,18 @@ See `dired-toggle-sudo-activate' for further information."
 	 (warn "Could not find tramp-sh.el not found. /sudo:x@y:z forms might not work.\n"
 	       "Please install emacs elisp source files.")))))
 
-;;;###autoload
-(defun dired-toggle-sudo (&optional sudo-user)
-  "Open current dired buffer with sudo.
-
-If SUDO-USER is nil assume root.
-
-If called with `universal-argument' (C-u), ask for username.
-"
-  (interactive "P")
-  (unless
-      (assoc 'dired-toggle-sudo:tramp-error
-	     (ad-get-advice-info-field 'tramp-error 'around))
-    (dired-toggle-sudo-activate))
-  (let* ((orig (current-buffer))
-	 (file-vec (or (ignore-errors (tramp-dissect-file-name
-				       default-directory))
+(defun dired-toggle-sudo-internal (path &optional sudo-user)
+  "Convert PATH to its sudoed version. root is used by default
+unless SUDO-USER is provided."
+  (let* ((file-vec (or (ignore-errors (tramp-dissect-file-name
+				       path))
 		       (tramp-dissect-file-name
-			(concat "/:" default-directory) 1)))
+			(concat "/:" path) 1)))
 	 (method  (tramp-file-name-method file-vec))
 	 (user (tramp-file-name-user file-vec)) 
 	 (host  (tramp-file-name-host file-vec))
-	 (localname (expand-file-name (tramp-file-name-localname file-vec)))
-	 (sudo-user (if current-prefix-arg
-			(read-string "Username: ")
-		      sudo-user))
-	 uri)
+	 (localname (expand-file-name 
+		     (tramp-file-name-localname file-vec))))
     (when (string= system-name host)
       (setq host nil))
     (cond
@@ -120,12 +106,38 @@ If called with `universal-argument' (C-u), ask for username.
      ;; Local directory -> normal
      (t
       (setq method "sudo" user sudo-user)))
-    (setq uri
-	  (replace-regexp-in-string  
-	   "^/:/" "/"
-	   (tramp-make-tramp-file-name method user host localname)))
-    (when (eq major-mode 'dired-mode)
-      (kill-buffer orig))
-    (dired uri)))
+    (replace-regexp-in-string
+     "^/:/" "/"
+     (tramp-make-tramp-file-name method user host localname))))
+
+;;;###autoload
+(defalias 'find-alternate-file-with-sudo 'dired-toggle-sudo)
+
+;;;###autoload
+(defun dired-toggle-sudo (&optional sudo-user)
+  "Reopen current file with sudo.
+
+If SUDO-USER is nil assume root.
+
+If called with `universal-argument' (C-u), ask for username.
+"
+  (interactive "P")
+  ;; Make sure tramp is correctly advised.
+  (unless
+      (assoc 'dired-toggle-sudo:tramp-error
+	     (ad-get-advice-info-field 'tramp-error 'around))
+    (dired-toggle-sudo-activate))
+  (let* ((fname (or buffer-file-name
+		    dired-directory))
+	 (sudo-user (if current-prefix-arg
+			(read-string "Username: ")
+		      sudo-user))
+	 (orig (current-buffer)))
+    (when fname
+      (setq fname (dired-toggle-sudo-internal fname sudo-user))
+      (if (not (eq major-mode 'dired-mode))
+	  (find-alternate-file fname)
+	(kill-buffer orig)
+	(dired fname)))))
 
 (provide 'dired-toggle-sudo)
