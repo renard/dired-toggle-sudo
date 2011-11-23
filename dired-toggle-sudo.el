@@ -111,11 +111,8 @@ unless SUDO-USER is provided."
      (tramp-make-tramp-file-name method user host localname))))
 
 ;;;###autoload
-(defalias 'find-alternate-file-with-sudo 'dired-toggle-sudo)
-
-;;;###autoload
 (defun dired-toggle-sudo (&optional sudo-user)
-  "Reopen current file with sudo.
+  "Reopen current file or dired buffer with sudo.
 
 If SUDO-USER is nil assume root.
 
