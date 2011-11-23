@@ -5,7 +5,7 @@
 ;; Author: Sebastien Gross <seb•ɑƬ•chezwam•ɖɵʈ•org>
 ;; Keywords: emacs, dired
 ;; Created: 2011-07-06
-;; Last changed: 2011-11-22 19:10:49
+;; Last changed: 2011-11-23 10:27:29
 ;; Licence: WTFPL, grab your copy here: http://sam.zoy.org/wtfpl/
 
 ;; This file is NOT part of GNU Emacs.
@@ -21,7 +21,7 @@
 
 ;;; Code:
 
-
+(eval-when-compile (require 'files))
 (eval-when-compile (require 'tramp))
 (eval-when-compile (require 'dired))
 (eval-when-compile (require 'advice))
