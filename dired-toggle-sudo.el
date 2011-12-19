@@ -110,6 +110,13 @@ unless SUDO-USER is provided."
      "^/:/" "/"
      (tramp-make-tramp-file-name method user host localname))))
 
+(defun dired-toggle-sudo-find (fname)
+  "Create a new buffer for file name FNAME."
+  (let ((save-point (point)))
+    (message "Buffer-file-name: %s" (buffer-file-name))
+    (find-alternate-file fname)
+    (goto-char save-point)))
+
 ;;;###autoload
 (defun dired-toggle-sudo (&optional sudo-user)
   "Reopen current file or dired buffer with sudo.
@@ -133,7 +140,7 @@ If called with `universal-argument' (C-u), ask for username.
     (when fname
       (setq fname (dired-toggle-sudo-internal fname sudo-user))
       (if (not (eq major-mode 'dired-mode))
-	  (find-alternate-file fname)
+	  (dired-toggle-sudo-find fname)
 	(kill-buffer orig)
 	(dired fname)))))
 
