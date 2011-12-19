@@ -5,7 +5,7 @@
 ;; Author: Sebastien Gross <seb•ɑƬ•chezwam•ɖɵʈ•org>
 ;; Keywords: emacs, dired
 ;; Created: 2011-07-06
-;; Last changed: 2011-11-23 10:27:29
+;; Last changed: 2011-12-19 13:26:15
 ;; Licence: WTFPL, grab your copy here: http://sam.zoy.org/wtfpl/
 
 ;; This file is NOT part of GNU Emacs.
@@ -113,7 +113,6 @@ unless SUDO-USER is provided."
 (defun dired-toggle-sudo-find (fname)
   "Create a new buffer for file name FNAME."
   (let ((save-point (point)))
-    (message "Buffer-file-name: %s" (buffer-file-name))
     (find-alternate-file fname)
     (goto-char save-point)))
 
