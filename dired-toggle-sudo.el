@@ -5,13 +5,13 @@
 ;; Author: Sebastien Gross <seb•ɑƬ•chezwam•ɖɵʈ•org>
 ;; Keywords: emacs, dired
 ;; Created: 2011-07-06
-;; Last changed: 2011-12-19 13:26:15
+;; Last changed: 2012-03-08 10:02:55
 ;; Licence: WTFPL, grab your copy here: http://sam.zoy.org/wtfpl/
 
 ;; This file is NOT part of GNU Emacs.
 
 ;;; Commentary:
-;; 
+;;
 ;; Allow to switch from current user to sudo when browsind `dired' buffers.
 ;;
 ;; To activate and swit with "C-c C-s" just put in your .emacs:
@@ -61,20 +61,22 @@ See `dired-toggle-sudo-activate' for further information."
 					 (tramp-file-name-host vec-or-proc)
 					 (tramp-file-name-localname vec-or-proc))))))
 	   ad-do-it))))
-  
+
   (eval-after-load "tramp-sh"
     '(progn
        ;; Reload `tramp-compute-multi-hops' to make
        ;; `dired-toggle-sudo:tramp-error' advice work.
        ;; WHY ????
        (if (ignore-errors (find-library "tramp-sh"))
-	   (progn
+	   (let ((buffer (ignore-errors (find-library "tramp-sh"))))
+	     (unless buffer
+	       (warn
+		"Could not find tramp-sh.el not found. /sudo:x@y:z forms might not work.\n"
+		"Please install emacs elisp source files."))
 	     (find-function 'tramp-compute-multi-hops)
 	     (forward-sexp)
 	     (eval-last-sexp nil)
-	     (kill-buffer "tramp-sh.el.gz"))
-	 (warn "Could not find tramp-sh.el not found. /sudo:x@y:z forms might not work.\n"
-	       "Please install emacs elisp source files.")))))
+	     (kill-buffer buffer))))))
 
 (defun dired-toggle-sudo-internal (path &optional sudo-user)
   "Convert PATH to its sudoed version. root is used by default
@@ -84,9 +86,9 @@ unless SUDO-USER is provided."
 		       (tramp-dissect-file-name
 			(concat "/:" path) 1)))
 	 (method  (tramp-file-name-method file-vec))
-	 (user (tramp-file-name-user file-vec)) 
+	 (user (tramp-file-name-user file-vec))
 	 (host  (tramp-file-name-host file-vec))
-	 (localname (expand-file-name 
+	 (localname (expand-file-name
 		     (tramp-file-name-localname file-vec))))
     (when (string= system-name host)
       (setq host nil))
