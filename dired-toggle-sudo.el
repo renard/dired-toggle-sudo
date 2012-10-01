@@ -5,7 +5,7 @@
 ;; Author: Sebastien Gross <seb•ɑƬ•chezwam•ɖɵʈ•org>
 ;; Keywords: emacs, dired
 ;; Created: 2011-07-06
-;; Last changed: 2012-03-08 10:02:55
+;; Last changed: 2012-10-02 01:29:17
 ;; Licence: WTFPL, grab your copy here: http://sam.zoy.org/wtfpl/
 
 ;; This file is NOT part of GNU Emacs.
@@ -18,65 +18,19 @@
 ;;
 ;; (require 'dired-toggle-sudo)
 ;; (define-key dired-mode-map (kbd "C-c C-s") 'dired-toggle-sudo)
+;; (eval-after-load 'tramp
+;;  '(progn
+;;     ;; Allow to use: /sudo:user@host:/path/to/file
+;;     (add-to-list 'tramp-default-proxies-alist
+;;		  '(".*" "\\`.+\\'" "/ssh:%h:"))))
+
+
 
 ;;; Code:
 
 (eval-when-compile (require 'files))
 (eval-when-compile (require 'tramp))
 (eval-when-compile (require 'dired))
-(eval-when-compile (require 'advice))
-
-(defun dired-toggle-sudo-activate ()
-  "Activate some advises both `tramp-error' and
-`tramp-compute-multi-hops' in order to allow sudo on remote host
-using a form like:
-
-/sudo:x@y:z ==> /multi:sshx:y:sudo:z@y:z
-
-In order to make sudo work on a remote host,
-`tramp-compute-multi-hops' should be reloaded (Why?).
-
-So please instal emacs elisp source files.
-
-This is based on TWB hack (http://paste.lisp.org/display/90780).
-"
-
-  (eval-after-load "tramp"
-     '(progn
-       (defadvice tramp-error
-	 (around dired-toggle-sudo:tramp-error activate)
-	 "Allow to use sudo on a remote host.
-See `dired-toggle-sudo-activate' for further information."
-	 (if (and (eq 'file-error signal)
-		  (string= "sudo" (tramp-file-name-method vec-or-proc)))
-	     (progn
-	     ;;(message (format "target-alist: %s" target-alist))
-	       (setq target-alist
-		     (cons (vector "sshx" ""
-				   (tramp-file-name-host vec-or-proc)
-				   "")
-			   (list (vector (tramp-file-name-method vec-or-proc)
-					 (unless (string= "root" (tramp-file-name-user vec-or-proc))
-					   (tramp-file-name-user vec-or-proc))
-					 (tramp-file-name-host vec-or-proc)
-					 (tramp-file-name-localname vec-or-proc))))))
-	   ad-do-it))))
-
-  (eval-after-load "tramp-sh"
-    '(progn
-       ;; Reload `tramp-compute-multi-hops' to make
-       ;; `dired-toggle-sudo:tramp-error' advice work.
-       ;; WHY ????
-       (if (ignore-errors (find-library "tramp-sh"))
-	   (let ((buffer (ignore-errors (find-library "tramp-sh"))))
-	     (unless buffer
-	       (warn
-		"Could not find tramp-sh.el not found. /sudo:x@y:z forms might not work.\n"
-		"Please install emacs elisp source files."))
-	     (find-function 'tramp-compute-multi-hops)
-	     (forward-sexp)
-	     (eval-last-sexp nil)
-	     (kill-buffer buffer))))))
 
 (defun dired-toggle-sudo-internal (path &optional sudo-user)
   "Convert PATH to its sudoed version. root is used by default
@@ -127,11 +81,6 @@ If SUDO-USER is nil assume root.
 If called with `universal-argument' (C-u), ask for username.
 "
   (interactive "P")
-  ;; Make sure tramp is correctly advised.
-  (unless
-      (assoc 'dired-toggle-sudo:tramp-error
-	     (ad-get-advice-info-field 'tramp-error 'around))
-    (dired-toggle-sudo-activate))
   (let* ((fname (or buffer-file-name
 		    dired-directory))
 	 (sudo-user (if current-prefix-arg
