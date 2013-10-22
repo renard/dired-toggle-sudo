@@ -95,3 +95,5 @@ If called with `universal-argument' (C-u), ask for username.
 	(dired fname)))))
 
 (provide 'dired-toggle-sudo)
+
+;;; dired-toggle-sudo.el ends here
