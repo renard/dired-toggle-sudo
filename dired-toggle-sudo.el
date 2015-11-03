@@ -5,7 +5,7 @@
 ;; Author: Sebastien Gross <seb•ɑƬ•chezwam•ɖɵʈ•org>
 ;; Keywords: emacs, dired
 ;; Created: 2011-07-06
-;; Last changed: 2012-10-02 01:29:17
+;; Last changed: 2015-11-03 20:14:06
 ;; Licence: WTFPL, grab your copy here: http://sam.zoy.org/wtfpl/
 
 ;; This file is NOT part of GNU Emacs.
@@ -35,7 +35,10 @@
 (defun dired-toggle-sudo-internal (path &optional sudo-user)
   "Convert PATH to its sudoed version. root is used by default
 unless SUDO-USER is provided."
-  (let* ((file-vec (or (ignore-errors (tramp-dissect-file-name
+  (let* (;; Handle the case of local files. `tramp-dissect-file-name' does
+	 ;; not raise an error anymore.
+	 (path (if (tramp-tramp-file-p path) path (concat "/:" path)))
+	 (file-vec (or (ignore-errors (tramp-dissect-file-name
 				       path))
 		       (tramp-dissect-file-name
 			(concat "/:" path) 1)))
