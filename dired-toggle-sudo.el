@@ -29,7 +29,7 @@
 ;;; Code:
 
 (eval-when-compile (require 'files))
-(eval-when-compile (require 'tramp))
+(require 'tramp)
 (eval-when-compile (require 'dired))
 
 (defun dired-toggle-sudo-internal (path &optional sudo-user)
