@@ -89,13 +89,17 @@ If called with `universal-argument' (C-u), ask for username.
 	 (sudo-user (if current-prefix-arg
 			(read-string "Username: ")
 		      sudo-user))
-	 (orig (current-buffer)))
+	 (orig (current-buffer))
+         (file-now (if (eq major-mode 'dired-mode)
+                       (dired-get-filename t))))
     (when fname
       (setq fname (dired-toggle-sudo-internal fname sudo-user))
       (if (not (eq major-mode 'dired-mode))
 	  (dired-toggle-sudo-find fname)
 	(kill-buffer orig)
-	(dired fname)))))
+	(dired fname)
+        (when file-now
+          (dired-goto-file (expand-file-name file-now fname)))))))
 
 (provide 'dired-toggle-sudo)
 
