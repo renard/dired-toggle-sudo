@@ -29,6 +29,7 @@
 (require 'files)
 (require 'tramp)
 (require 'dired)
+(require 'cl-lib)
 
 (defface dired-toggle-sudo-header-face
   '((t (:foreground "white" :background "red3")))
@@ -109,21 +110,21 @@ If called with `universal-argument' (C-u), ask for username.
 "
   (interactive "P")
   (let* ((fname (or buffer-file-name
-		    dired-directory))
-	 (sudo-user (if current-prefix-arg
-			(read-string "Username: ")
-		      sudo-user))
-	 (orig (current-buffer))
-         (file-now (if (eq major-mode 'dired-mode)
-                       (dired-get-filename t))))
+                   dired-directory))
+         (sudo-user (if current-prefix-arg
+                        (read-string "Username: ")
+                      sudo-user))
+         (save-point (point))
+         (save-window-start (window-start)))
     (when fname
       (setq fname (dired-toggle-sudo--internal fname sudo-user))
-      (if (not (eq major-mode 'dired-mode))
-	  (dired-toggle-sudo-find fname)
-	(kill-buffer orig)
-	(dired fname)
-        (when file-now
-          (dired-goto-file (expand-file-name file-now fname)))))))
+      (cl-letf (((symbol-function 'server-buffer-done)
+                 (lambda (buffer &optional for-killing) nil))
+                ((symbol-function 'server-kill-buffer-query-function)
+                 (lambda () t)))
+        (find-alternate-file fname))
+      (goto-char save-point)
+      (set-window-start (selected-window) save-window-start))))
 
 (provide 'dired-toggle-sudo)
 
