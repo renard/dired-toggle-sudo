@@ -30,7 +30,6 @@
 (require 'tramp)
 (require 'dired)
 
-(defun dired-toggle-sudo-internal (path &optional sudo-user)
 (defface dired-toggle-sudo-header-face
   '((t (:foreground "white" :background "red3")))
   "*Face use to display header-lines for files opened as root."
@@ -50,47 +49,55 @@ This function is suitable to add to `find-file-hook' and `dired-file-hook'."
 (add-hook 'find-file-hook 'dired-toggle-sudo-set-header)
 (add-hook 'dired-mode-hook 'dired-toggle-sudo-set-header)
 
+(defun dired-toggle-sudo--internal (path &optional sudo-user)
   "Convert PATH to its sudoed version. root is used by default
 unless SUDO-USER is provided."
-  (let* (;; Handle the case of local files. `tramp-dissect-file-name' does
-	 ;; not raise an error anymore.
-	 (path (if (tramp-tramp-file-p path) path (concat "/:" path)))
-	 (file-vec (or (ignore-errors (tramp-dissect-file-name
-				       path))
-		       (tramp-dissect-file-name
-			(concat "/:" path) 1)))
-	 (method  (tramp-file-name-method file-vec))
-	 (user (tramp-file-name-user file-vec))
-	 (host  (tramp-file-name-host file-vec))
-	 (localname (expand-file-name
-		     (tramp-file-name-localname file-vec))))
-    (when (string= system-name host)
-      (setq host nil))
-    (cond
-     ;; remote directory -> sudo
-     ((and host (string= method "scp"))
-      (setq method "sudo" user sudo-user))
-     ;; remote directory -> normal
-     ((and host (string= method "sudo"))
-      (setq method "scp" user nil))
-     ;; Local directory -> normal
-     ((and (not host) (string= method "scp"))
-      (setq method "sudo"))
-     ;; Local directory -> sudo
-     ((and (not host) (string= method "sudo"))
-      (setq method nil user sudo-user))
-     ;; Local directory -> normal
-     (t
-      (setq method "sudo" user sudo-user)))
-    (replace-regexp-in-string
-     "^/:/" "/"
-     (tramp-make-tramp-file-name method user host localname))))
+  (let ((path (expand-file-name path)))
+    (if (not (tramp-tramp-file-p path))
+        ;; local, no sudo
+        (tramp-make-tramp-file-name "sudo" sudo-user nil path)
+      (with-parsed-tramp-file-name path nil
+        (if (not (string= method "sudo"))
+            ;; add sudo
+            (tramp-make-tramp-file-name
+             "sudo" sudo-user host localname
+             (let ((tramp-postfix-host-format tramp-postfix-hop-format)
+                   (tramp-prefix-format nil))
+               (tramp-make-tramp-file-name
+                method user host "" hop)))
+          ;; already has sudo, remove
+          (if hop
+              ;; remove sudo (last hop)
+              (tramp-make-tramp-file-name
+               nil nil nil localname (replace-regexp-in-string "|$" "" hop))
+            ;; just use localname
+            localname))))))
 
-(defun dired-toggle-sudo-find (fname)
-  "Create a new buffer for file name FNAME."
-  (let ((save-point (point)))
-    (find-alternate-file fname)
-    (goto-char save-point)))
+;; simple tests
+(when t
+  (let (orig known-good xform fail)
+    (dolist (x `(("/ssh:gwuser@gateway|ssh:user@remote|sudo:root@remote:/etc/fstab"
+                  . "/ssh:gwuser@gateway|ssh:user@remote:/etc/fstab")
+                 ("/ssh:gwuser@gateway|ssh:user@remote:/etc/fstab"
+                  . "/ssh:gwuser@gateway|ssh:user@remote|sudo:remote:/etc/fstab")
+                 ("/ssh:user@remote:/etc/fstab"
+                  . "/ssh:user@remote|sudo:remote:/etc/fstab")
+                 ("/ssh:user@remote|sudo:root@remote:/etc/fstab"
+                  . "/ssh:user@remote:/etc/fstab")
+                 ("/sudo::/etc/fstab"
+                  . "/etc/fstab")
+                 ("/etc/fstab"
+                  . "/sudo::/etc/fstab")
+                 ("~/foo"
+                  . ,(concat "/sudo::" (getenv "HOME") "/foo"))))
+      (setq orig (car x)
+            known-good (cdr x)
+            xform (dired-toggle-sudo--internal orig))
+        (unless (string= xform known-good)
+          (message "XX %s\n-> %s\n!= %s\n" orig xform known-good)
+          (setq fail t)))
+    (when fail
+      (message "Fail!"))))
 
 ;;;###autoload
 (defun dired-toggle-sudo (&optional sudo-user)
@@ -110,7 +117,7 @@ If called with `universal-argument' (C-u), ask for username.
          (file-now (if (eq major-mode 'dired-mode)
                        (dired-get-filename t))))
     (when fname
-      (setq fname (dired-toggle-sudo-internal fname sudo-user))
+      (setq fname (dired-toggle-sudo--internal fname sudo-user))
       (if (not (eq major-mode 'dired-mode))
 	  (dired-toggle-sudo-find fname)
 	(kill-buffer orig)
