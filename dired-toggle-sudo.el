@@ -31,6 +31,25 @@
 (require 'dired)
 
 (defun dired-toggle-sudo-internal (path &optional sudo-user)
+(defface dired-toggle-sudo-header-face
+  '((t (:foreground "white" :background "red3")))
+  "*Face use to display header-lines for files opened as root."
+  :group 'tramp)
+
+;;;###autoload
+(defun dired-toggle-sudo-set-header ()
+  "*Display a warning in header line of the current buffer.
+This function is suitable to add to `find-file-hook' and `dired-file-hook'."
+  (when (string-equal
+         (file-remote-p (or buffer-file-name default-directory) 'user)
+         "root")
+    (setq header-line-format
+          (propertize "--- WARNING: EDITING FILE AS ROOT! %-"
+                      'face 'dired-toggle-sudo-header-face))))
+
+(add-hook 'find-file-hook 'dired-toggle-sudo-set-header)
+(add-hook 'dired-mode-hook 'dired-toggle-sudo-set-header)
+
   "Convert PATH to its sudoed version. root is used by default
 unless SUDO-USER is provided."
   (let* (;; Handle the case of local files. `tramp-dissect-file-name' does
