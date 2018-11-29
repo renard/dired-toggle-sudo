@@ -37,17 +37,20 @@
 unless SUDO-USER is provided."
   (let* (;; Handle the case of local files. `tramp-dissect-file-name' does
 	 ;; not raise an error anymore.
-	 (path (if (tramp-tramp-file-p path) path (concat "/:" path)))
+	 ;;(path (if (tramp-tramp-file-p path) path (concat "/-::" path)))
 	 (file-vec (or (ignore-errors (tramp-dissect-file-name
 				       path))
 		       (tramp-dissect-file-name
-			(concat "/:" path) 1)))
+			(concat "/-::" path) 1)))
 	 (method  (tramp-file-name-method file-vec))
 	 (user (tramp-file-name-user file-vec))
 	 (host  (tramp-file-name-host file-vec))
+         (domain  (tramp-file-name-domain file-vec))
+         (port  (tramp-file-name-port file-vec))
 	 (localname (expand-file-name
 		     (tramp-file-name-localname file-vec))))
-    (when (string= system-name host)
+    (when (or (string= (system-name) host)
+              (string= "-" host))
       (setq host nil))
     (cond
      ;; remote directory -> sudo
@@ -67,7 +70,7 @@ unless SUDO-USER is provided."
       (setq method "sudo" user sudo-user)))
     (replace-regexp-in-string
      "^/:/" "/"
-     (tramp-make-tramp-file-name method user host localname))))
+     (tramp-make-tramp-file-name method domain user host port localname))))
 
 (defun dired-toggle-sudo-find (fname)
   "Create a new buffer for file name FNAME."
