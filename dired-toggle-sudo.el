@@ -5,7 +5,7 @@
 ;; Author: Sebastien Gross <seb•ɑƬ•chezwam•ɖɵʈ•org>
 ;; Keywords: emacs, dired
 ;; Created: 2011-07-06
-;; Last changed: 2015-11-09 11:03:27
+;; Last changed: 2020-04-01 15:52:40
 ;; Licence: WTFPL, grab your copy here: http://sam.zoy.org/wtfpl/
 
 ;; This file is NOT part of GNU Emacs.
@@ -37,27 +37,38 @@
 unless SUDO-USER is provided."
   (let* (;; Handle the case of local files. `tramp-dissect-file-name' does
 	 ;; not raise an error anymore.
-	 (path (if (tramp-tramp-file-p path) path (concat "/:" path)))
+	 (tramp-pseudo-method (if (> emacs-major-version 25)
+				  "/-::" "/:"))
+	 (path (if (tramp-tramp-file-p path)
+		   path
+		 (concat tramp-pseudo-method path)))
 	 (file-vec (or (ignore-errors (tramp-dissect-file-name
 				       path))
 		       (tramp-dissect-file-name
-			(concat "/:" path) 1)))
+			(concat tramp-pseudo-method path) 1)))
 	 (method  (tramp-file-name-method file-vec))
 	 (user (tramp-file-name-user file-vec))
 	 (host  (tramp-file-name-host file-vec))
 	 (localname (expand-file-name
 		     (tramp-file-name-localname file-vec))))
-    (when (string= system-name host)
+    ;; (message "(tramp-make-tramp-file-name %s %s %s %s %s %s)"
+    ;; 	     method
+    ;; 	     (tramp-file-name-domain file-vec)
+    ;; 	     user host
+    ;; 	     (tramp-file-name-port file-vec)
+    ;; 	     localname)
+    (when (or (string= system-name host)
+	      (string= "-" host))
       (setq host nil))
     (cond
      ;; remote directory -> sudo
-     ((and host (string= method "scp"))
+     ((and host (string= method "ssh"))
       (setq method "sudo" user sudo-user))
      ;; remote directory -> normal
      ((and host (string= method "sudo"))
-      (setq method "scp" user nil))
+      (setq method "ssh" user nil))
      ;; Local directory -> normal
-     ((and (not host) (string= method "scp"))
+     ((and (not host) (string= method "ssh"))
       (setq method "sudo"))
      ;; Local directory -> sudo
      ((and (not host) (string= method "sudo"))
@@ -65,9 +76,23 @@ unless SUDO-USER is provided."
      ;; Local directory -> normal
      (t
       (setq method "sudo" user sudo-user)))
+    ;; (message "%s -> %s" path file-vec)
+    ;; (message "(tramp-make-tramp-file-name %s %s %s %s %s %s)"
+    ;; 	     method
+    ;; 	     (tramp-file-name-domain file-vec)
+    ;; 	     user host
+    ;; 	     (tramp-file-name-port file-vec)
+    ;; 	     localname)
     (replace-regexp-in-string
      "^/:/" "/"
-     (tramp-make-tramp-file-name method user host localname))))
+     (if (> emacs-major-version 25)
+	 (tramp-make-tramp-file-name method
+				     user
+				     (tramp-file-name-domain file-vec)
+				     host
+				     (tramp-file-name-port file-vec)
+				     localname)
+	 (tramp-make-tramp-file-name method user host localname)))))
 
 (defun dired-toggle-sudo-find (fname)
   "Create a new buffer for file name FNAME."
